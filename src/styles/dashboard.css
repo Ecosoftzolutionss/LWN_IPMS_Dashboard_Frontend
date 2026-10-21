@@ -1,0 +1,755 @@
+/* ==========================================================================
+   LEEWON Raw Material FIFO Management System - 1920 x 1080 stage
+   Everything below is in "design pixels"; <Stage> scales it to the real screen.
+   ========================================================================== */
+
+:root {
+  /* One font for the whole app: Arial (bold where "Arial Black" was used) */
+  --font-black: Arial, Helvetica, sans-serif;
+  --font-value: Arial, Helvetica, sans-serif;
+  /* Customer request: Part Number on the detail screen uses Impact */
+  --font-impact: Impact, 'Arial Narrow', Arial, sans-serif;
+
+  --blue: #0000ff;
+  --yellow: #ffff00;
+
+  /* Frame spacing - change these two to tune the border look */
+  --frame-border: 6px;   /* thickness of the outer white line            */
+  --frame-gap: 10px;     /* black gap between outer line and inner boxes */
+
+  /* Black margin between the screen edge and the outer white frame */
+  --stage-margin: 24px;
+
+  /* Table screen line thicknesses (design px) */
+  --table-gap: 3px;      /* thin black gap: outer frame line -> table border   */
+  --table-border: 4px;   /* outer border of the table                          */
+  --grid-line: 3px;      /* every line between cells                           */
+  --head-line: 5px;      /* bold line under the blue header row                */
+  --header-line: 3px;    /* full-width line under logo / title / clock         */
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+  cursor: none; /* kiosk display */
+}
+
+body {
+  font-family: var(--font-black);
+  color: #fff;
+}
+
+.viewport {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  overflow: hidden;
+}
+
+.stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-origin: center center;
+  background: #000;
+  overflow: hidden;
+}
+
+.screen-fade {
+  width: 100%;
+  height: 100%;
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.screen-wrapper {
+  width: 100%;
+  height: 100%;
+  padding: var(--stage-margin);
+  box-sizing: border-box;
+  background: #000;
+  display: flex;
+}
+
+/* Outer white frame - inner content sits close to this line (reference look) */
+.screen-frame {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border: var(--frame-border) solid #fff;
+  border-radius: 0;
+  background: #000;
+  padding: var(--frame-gap);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------- header */
+
+/* Plain header (table screen): no box, so keep logo / clock inset from the frame */
+.screen-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  column-gap: 24px;
+  flex-shrink: 0;
+  height: 96px;
+  margin-bottom: 8px;
+  padding: 0 24px;
+  box-sizing: border-box;
+}
+
+/* Boxed header (detail screen): its top / left / right edges ARE the outer
+   frame line, so only a bottom line is drawn. Negative margins cancel the
+   frame padding so the header runs edge to edge inside the frame. */
+.screen-header-boxed {
+  border: 0;
+  border-bottom: 3px solid #fff;
+  border-radius: 0;
+  padding: 0 24px;
+  height: 100px;
+  margin: calc(-1 * var(--frame-gap)) calc(-1 * var(--frame-gap)) var(--frame-gap);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+  min-width: 0;
+}
+
+.leewon-logo {
+  flex-shrink: 0;
+  display: block;
+}
+
+.brand-text {
+  font-family: var(--font-black);
+  font-weight: 700;
+  font-size: 40px;
+  letter-spacing: 2px;
+  color: #fff;
+}
+
+.header-title {
+  margin: 0;
+  text-align: center;
+  white-space: nowrap;
+  font-family: var(--font-black);
+  font-weight: 700;
+  font-size: 44px;
+  color: var(--yellow);
+}
+
+.header-right {
+  min-width: 0;
+  text-align: right;
+}
+
+.live-clock {
+  font-family: var(--font-black);
+  font-weight: 700;
+  font-size: 34px;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------- screen 1: table */
+
+/* Table screen: the table sits almost against the outer frame line
+   (thin black gap only), like the reference. The detail screen keeps
+   its own --frame-gap spacing. */
+.screen-frame:not(.detail-frame) {
+  padding: var(--table-gap);
+}
+
+/* header has no box here, so keep logo / clock inset from the frame */
+/* The header box: its top / left / right edges are the outer frame line and a
+   full-width line is drawn under it. Negative margins cancel the frame padding
+   so that line runs from frame edge to frame edge. */
+.screen-frame:not(.detail-frame) .screen-header {
+  padding: 0 40px;
+  height: calc(96px + var(--table-gap));
+  margin: calc(-1 * var(--table-gap)) calc(-1 * var(--table-gap)) var(--table-gap);
+  border-bottom: var(--header-line) solid #fff;
+}
+
+.table-container {
+  flex: 1;
+  min-height: 0;
+}
+
+.fifo-table {
+  width: 100%;
+  height: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  border: var(--table-border) solid #fff;
+}
+
+.fifo-table th,
+.fifo-table td {
+  border: var(--grid-line) solid #fff;   /* grid lines between cells */
+  padding: 0 8px;
+  box-sizing: border-box;
+  font-family: var(--font-black);
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+}
+
+/* text inside table cells - sized by useFitGroups */
+.fit-cell {
+  display: inline-block;
+  white-space: nowrap;
+  line-height: 1.15;
+  vertical-align: middle;
+}
+
+.fifo-table thead th {
+  background: var(--blue);
+  color: #fff;
+  font-size: 24px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.fifo-table thead tr:first-child th { height: 50px; }
+.fifo-table thead tr:last-child th { height: 60px; }
+
+/* bold line under the whole blue header (not under "Previous Issued Details") */
+.fifo-table thead th[rowspan="2"],
+.fifo-table thead .sub-head th {
+  border-bottom: var(--head-line) solid #fff;
+}
+
+.fifo-table tbody tr {
+  height: calc((100% - 110px) / var(--rows, 15));
+}
+
+.fifo-table tbody td {
+  background: #000;
+  color: #fff;
+  font-size: var(--body-font, 22px);
+}
+
+.fifo-table td.l {
+  text-align: left;
+  padding-left: 12px;
+}
+
+/* FIFO Code + Level: colour box that fills the cell, thick black border.
+   Colours come from React inline styles. */
+.fifo-table td.box-cell {
+  position: relative;
+  padding: 0;
+  background: #000;
+}
+
+.cell-box {
+  position: absolute;
+  inset: 5px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #000;
+  border-radius: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  font-weight: 700;
+}
+
+/* ------------------------------------------------- screen 2: pallet detail */
+
+.detail-frame {
+  gap: 0;
+}
+
+.cards-row {
+  display: flex;
+  width: 100%;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Top cards: a full-width white line under the row (frame edge to frame edge) */
+.cards-top {
+  flex: 0 0 calc(258px + var(--frame-gap) + 3px);
+  height: calc(258px + var(--frame-gap) + 3px);
+  box-sizing: border-box;
+  width: auto;
+  margin: 0 calc(-1 * var(--frame-gap));
+  padding: 0 var(--frame-gap) var(--frame-gap);
+  border-bottom: 3px solid #fff;
+}
+
+/* Bottom cards: black gap above the footer's top line */
+.cards-bottom {
+  flex: 0 0 calc(214px + var(--frame-gap));
+  height: calc(214px + var(--frame-gap));
+  box-sizing: border-box;
+  padding-bottom: var(--frame-gap);
+}
+
+/* CoreUI card -> white rounded card of the reference */
+.white-card.card {
+  --cui-card-bg: #fff;
+  --cui-card-border-width: 0;
+  --cui-card-border-radius: 8px;
+  --cui-card-color: #000;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  border: 2px solid #fff;
+  background: #fff;
+  border-radius: 7px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.white-card-body.card-body {
+  height: 100%;
+  padding: 8px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.card-label {
+  color: #000;
+  font-family: Arial, sans-serif;
+  font-size: 31px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.card-divider {
+  height: 2px;
+  min-height: 2px;
+  background: #333;
+  margin: 6px 0 8px;
+  flex-shrink: 0;
+}
+
+/* Value boxes: colours come from React inline styles (API colours),
+   so no background / text colour is set here. */
+.value-box {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-sizing: border-box;
+  border: 2px solid #000;   /* thin dark outline like the reference */
+  border-radius: 9px;
+  padding: 4px 10px;
+  overflow: hidden;
+}
+
+.blue-box {
+  background: var(--blue);
+  color: #fff;
+}
+
+.fit-text {
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+  line-height: 1.08;
+}
+
+.value-text {
+  font-family: var(--font-value);
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+/* Part Number + Part Name values: Impact (customer request).
+   Impact has no bold weight, so keep weight 400 to avoid fake-bold smearing. */
+.value-text.part-number-text,
+.value-text.part-name-text {
+  font-family: var(--font-impact);
+  font-weight: 400;
+}
+
+.value-text .line {
+  display: block;
+}
+
+/* middle: available pallets */
+.pallet-order-box {
+  flex: 1 1 0;
+  min-height: 150px;
+  min-width: 0;
+  position: relative;
+  margin: 24px 0 10px;
+  /* double line: outer border + inner white line (after a thin black gap) */
+  border: 3px solid #fff;
+  border-radius: 12px;
+  box-shadow:
+    inset 0 0 0 4px #000,
+    inset 0 0 0 7px #fff;
+  padding: 32px 18px 18px;
+  box-sizing: border-box;
+  display: flex;
+}
+
+.pallet-box-legend {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #000;
+  border: 3px solid #fff;
+  border-radius: 0;
+  padding: 2px 18px;
+  font-family: Arial, sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  line-height: 1.25;
+  z-index: 1;
+}
+
+.pallet-grid {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  row-gap: 10px;
+  column-gap: 4px;
+}
+
+.pallet-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* text runs bottom-to-top like the reference tiles */
+.pallet-tile {
+  width: calc(var(--tile-font, 21px) * 2 + 20px);
+  max-width: 100%;
+  height: 100%;
+  max-height: 150px;
+  box-sizing: border-box;
+  border: 1px solid #fff;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 3px;
+  overflow: hidden;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-family: var(--font-black);
+  font-weight: 700;
+  font-size: var(--tile-font, 21px);
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* forklift footer */
+.forklift-footer {
+  flex: 0 0 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* only a top line - sides and bottom are the outer frame line */
+  border: 0;
+  border-top: 3px solid #fff;
+  border-radius: 0;
+  margin: 0 calc(-1 * var(--frame-gap)) calc(-1 * var(--frame-gap));
+  padding: 0 8px;
+  box-sizing: border-box;
+  min-width: 0;
+  font-family: Arial, sans-serif;
+  font-size: 34px;
+  font-weight: 400;
+  color: var(--yellow);
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* --------------------------------------------------------- status layers */
+
+.center-message {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.server-alert.alert {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 8px 28px;
+  font-family: Arial, sans-serif;
+  font-size: 24px;
+  z-index: 10;
+  opacity: 0.95;
+}
+
+/* ------------------------------------------------------------ PDF screen */
+
+.pdf-toolbar {
+  flex-shrink: 0;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 14px;
+  margin-bottom: 8px;
+  background: #181818;
+  border: 2px solid #fff;
+  border-radius: 10px;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  font-size: 20px;
+  box-sizing: border-box;
+}
+
+.pdf-page-info {
+  font-weight: 600;
+}
+
+.pdf-zoom-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.pdf-zoom-controls button {
+  min-width: 42px;
+  min-height: 38px;
+  padding: 4px 12px;
+  border: 1px solid #888;
+  border-radius: 6px;
+  background: #333;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pdf-zoom-controls button:hover:not(:disabled) {
+  background: #555;
+}
+
+.pdf-zoom-controls button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pdf-zoom-value {
+  min-width: 90px;
+  text-align: center;
+  font-weight: 700;
+  color: #ffff00;
+}
+
+/* PDF viewing area */
+.doc-viewer {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+  overflow: auto;
+  background: #292929;
+  border: 3px solid #fff;
+  border-radius: 12px;
+  box-sizing: border-box;
+  padding: 16px 20px;
+  cursor: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #aaa #292929;
+}
+
+.doc-viewer::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.doc-viewer::-webkit-scrollbar-thumb {
+  background: #aaa;
+  border-radius: 8px;
+}
+
+.pdf-page {
+  width: max-content;
+  max-width: none;
+  margin: 0 auto 22px;
+  background: #fff;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 35%);
+}
+
+.pdf-page .react-pdf__Page {
+  max-width: none;
+}
+
+.pdf-page canvas {
+  display: block;
+  height: auto !important;
+  max-width: none;
+}
+
+/* PDF slideshow: one page at a time, fitted fully inside the viewer */
+.doc-screen-frame .doc-viewer {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.doc-screen-frame .doc-viewer .react-pdf__Document {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.doc-screen-frame .pdf-page {
+  margin: 0;
+}
+
+/* fit-width mode: the page fills the width and the viewer scrolls by itself */
+.doc-screen-frame .doc-viewer.doc-viewer-scroll {
+  display: block;
+  overflow: hidden;
+  padding: 0;
+}
+
+.doc-screen-frame .doc-viewer.doc-viewer-scroll .react-pdf__Document {
+  display: block;
+  height: auto;
+}
+
+.doc-screen-frame .doc-viewer.doc-viewer-scroll .pdf-page {
+  margin: 0 auto;
+}
+
+.pdf-status {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: #fff;
+  font: 600 22px Arial, sans-serif;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------ responsive */
+
+@media (max-width: 768px) {
+  :root {
+    --frame-border: 3px;
+    --frame-gap: 4px;
+    --stage-margin: 4px;
+    --table-gap: 2px;
+    --table-border: 3px;
+    --grid-line: 2px;
+    --head-line: 3px;
+  }
+
+  .cards-row {
+    gap: 4px;
+  }
+
+  .screen-frame:not(.detail-frame) {
+    padding: 3px;
+  }
+
+  .screen-frame:not(.detail-frame) .screen-header {
+    padding: 0 16px;
+  }
+
+  .cards-top {
+    flex-basis: calc(180px + var(--frame-gap) + 3px);
+    height: calc(180px + var(--frame-gap) + 3px);
+  }
+  .cards-bottom {
+    flex-basis: calc(150px + var(--frame-gap));
+    height: calc(150px + var(--frame-gap));
+  }
+
+  .card-label {
+    font-size: 20px;
+  }
+
+  .pallet-order-box {
+    min-height: 120px;
+  }
+
+  .pallet-box-legend {
+    max-width: 90%;
+    font-size: 18px;
+    padding: 2px 8px;
+  }
+
+  .forklift-footer {
+    flex-basis: 44px;
+    height: 44px;
+    font-size: 18px;
+  }
+
+  .pdf-toolbar {
+    flex-wrap: wrap;
+    font-size: 15px;
+  }
+
+  .pdf-zoom-controls {
+    gap: 5px;
+  }
+
+  .pdf-zoom-controls button {
+    min-width: 34px;
+    min-height: 34px;
+    padding: 3px 8px;
+    font-size: 18px;
+  }
+
+  .pdf-zoom-value {
+    min-width: 70px;
+  }
+
+  .doc-viewer {
+    padding: 10px;
+  }
+}
