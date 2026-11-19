@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { CCard, CCardBody } from '@coreui/react';
 import Header from './Header';
 import FitText from './FitText';
@@ -10,6 +10,12 @@ import {
   levelStyle,
   textOn,
 } from '../constants';
+
+// "KAP-12" -> 12  (trailing number of the pallet no.)
+const palletNumber = (value) => {
+  const match = String(value ?? '').match(/(\d+)$/);
+  return match ? Number(match[1]) : 0;
+};
 
 /** White rounded card: label, divider line, value box */
 function InfoCard({ label, children }) {
@@ -26,7 +32,16 @@ function InfoCard({ label, children }) {
 
 /** Screen 2 - one part: details + every available pallet in its pallet colour */
 export default function PalletDetailScreen({ part, dateTime }) {
-  const pallets = part?.pallets ?? [];
+  // Available pallets (remaining qty) in FIFO order = lowest pallet number first.
+  // Same order the API uses, so the first tile is always the "Next FIFO Pallet".
+  const pallets = useMemo(
+    () =>
+      [...(part?.pallets ?? [])].sort(
+        (a, b) => palletNumber(a.palletNo) - palletNumber(b.palletNo)
+      ),
+    [part]
+  );
+
   const gridRows = Math.max(2, Math.ceil(pallets.length / PALLET_COLUMNS));
   // smaller tile text when there are more than 2 rows of pallets
   const tileFont = gridRows <= 2 ? 21 : gridRows === 3 ? 14 : 10;
@@ -110,6 +125,7 @@ export default function PalletDetailScreen({ part, dateTime }) {
                     style={{ backgroundColor: bg, color: textOn(bg, '#ffffff', '#000000') }}
                   >
                     <span>{p.palletNo}</span>
+                    {/* remaining quantity of the pallet */}
                     <span>{fmtNum(p.qty)}</span>
                   </div>
                 </div>
