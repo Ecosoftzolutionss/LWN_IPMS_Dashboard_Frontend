@@ -34,14 +34,14 @@ function InfoCard({ label, children }) {
 export default function PalletDetailScreen({ part, dateTime }) {
   // Available pallets (remaining qty) in FIFO order = lowest pallet number first.
   // Same order the API uses, so the first tile is always the "Next FIFO Pallet".
-  const pallets = useMemo(
-    () =>
-      [...(part?.pallets ?? [])].sort(
-        (a, b) => palletNumber(a.palletNo) - palletNumber(b.palletNo)
-      ),
-    [part]
-  );
-
+  // const pallets = useMemo(
+  //   () =>
+  //     [...(part?.pallets ?? [])].sort(
+  //       (a, b) => palletNumber(a.palletNo) - palletNumber(b.palletNo)
+  //     ),
+  //   [part]
+  // );
+const pallets = useMemo(() => part?.pallets ?? [], [part]);
   const gridRows = Math.max(2, Math.ceil(pallets.length / PALLET_COLUMNS));
   // smaller tile text when there are more than 2 rows of pallets
   const tileFont = gridRows <= 2 ? 21 : gridRows === 3 ? 14 : 10;
